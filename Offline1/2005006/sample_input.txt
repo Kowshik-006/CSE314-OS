@@ -1,0 +1,11 @@
+true
+zip rar
+c cpp python
+100
+5
+/mnt/d/University_Studies/L-3_T-2/CSE_314/Offline1/2005006/submissions
+2005001 2005010
+/mnt/d/University_Studies/L-3_T-2/CSE_314/Offline1/2005006/submissions/expected_output.txt
+10
+/mnt/d/University_Studies/L-3_T-2/CSE_314/Offline1/2005006/submissions/plagiarism.txt
+100
