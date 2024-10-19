@@ -38,7 +38,7 @@ index 0000000..869f5e2
 \ No newline at end of file
 diff --git a/.vscode/settings.json b/.vscode/settings.json
 new file mode 100644
-index 0000000..bbb8222
+index 0000000..5183052
 --- /dev/null
 +++ b/.vscode/settings.json
 @@ -0,0 +1,8 @@
@@ -100,7 +100,7 @@ index 62fd0f8..c4dae69 100644
  fs.img: mkfs/mkfs README $(UPROGS)
  	mkfs/mkfs fs.img README $(UPROGS)
 diff --git a/kernel/proc.c b/kernel/proc.c
-index 58a8a0b..61566a8 100644
+index 58a8a0b..4e07e4a 100644
 --- a/kernel/proc.c
 +++ b/kernel/proc.c
 @@ -125,6 +125,7 @@ found:
@@ -136,11 +136,6 @@ index 58a8a0b..61566a8 100644
  
    release(&wait_lock);
  
-@@ -686,3 +689,4 @@ procdump(void)
-     printf("\n");
-   }
- }
-+
 diff --git a/kernel/proc.h b/kernel/proc.h
 index d021857..a93bde7 100644
 --- a/kernel/proc.h
@@ -172,7 +167,7 @@ index 4392820..f8c92cc 100644
  };
 -
 diff --git a/kernel/syscall.c b/kernel/syscall.c
-index ed65409..dd4115d 100644
+index ed65409..8cd6a44 100644
 --- a/kernel/syscall.c
 +++ b/kernel/syscall.c
 @@ -101,6 +101,10 @@ extern uint64 sys_unlink(void);
@@ -218,7 +213,7 @@ index ed65409..dd4115d 100644
 +[SYS_link]    "link",
 +[SYS_mkdir]   "mkdir",
 +[SYS_close]   "close",
-+[SYS_trace]   "trace",  
++[SYS_trace]   "trace",
 +[SYS_info]    "info",
 +[SYS_getLastCommand]  "getLastCommand",
 +[SYS_setLastCommand]  "setLastCommand",
@@ -238,7 +233,7 @@ index ed65409..dd4115d 100644
      // and store its return value in p->trapframe->a0
 -    p->trapframe->a0 = syscalls[num]();
 -  } else {
-+    
++
 +    if(traced_syscall != num){
 +      p->trapframe->a0 = syscalls[num]();
 +    }
@@ -282,7 +277,7 @@ index ed65409..dd4115d 100644
 +          argint(0, &fd);
 +          argaddr(1, &buf);
 +          argint(2, &n);
-+          printf("args: (%d, 0x%p, %d), ",fd, (void*)buf, n);
++          printf("args: (%d, %p, %d), ",fd, (void*)buf, n);
 +          p->trapframe->a0 = syscalls[num]();
 +          printf("return: %lu\n", p->trapframe->a0);
 +          break;
@@ -300,7 +295,7 @@ index ed65409..dd4115d 100644
 +          uint64 argv;
 +          argstr(0, path, MAXPATH);
 +          argaddr(1, &argv);
-+          printf("args: (%s, 0x%p), ", path, (void*)argv);
++          printf("args: (%s, %p), ", path, (void*)argv);
 +          p->trapframe->a0 = syscalls[num]();
 +          printf("return: %lu\n", p->trapframe->a0);
 +          break;
@@ -310,7 +305,7 @@ index ed65409..dd4115d 100644
 +          uint64 statbuf;
 +          argint(0, &fd);
 +          argaddr(1, &statbuf);
-+          printf("args: (%d, 0x%p), ", fd, (void*)statbuf);
++          printf("args: (%d, %p), ", fd, (void*)statbuf);
 +          p->trapframe->a0 = syscalls[num]();
 +          printf("return: %lu\n", p->trapframe->a0);
 +          break;
@@ -374,7 +369,7 @@ index ed65409..dd4115d 100644
 +          argint(0, &fd);
 +          argaddr(1, &buf);
 +          argint(2, &n);
-+          printf("args: (%d, 0x%p, %d), ", fd, (void*)buf, n);
++          printf("args: (%d, %p, %d), ", fd, (void*)buf, n);
 +          p->trapframe->a0 = syscalls[num]();
 +          printf("return: %lu\n", p->trapframe->a0);
 +          break;
@@ -430,7 +425,7 @@ index ed65409..dd4115d 100644
 +        }
 +      }
 +    }
-+  } 
++  }
 +  else {
      printf("%d %s: unknown sys call %d\n",
              p->pid, p->name, num);
@@ -449,7 +444,7 @@ index bc5f356..87356e9 100644
 +#define SYS_setLastCommand 25
 \ No newline at end of file
 diff --git a/kernel/sysproc.c b/kernel/sysproc.c
-index 3b4d5bd..fd95998 100644
+index 3b4d5bd..fa0bffe 100644
 --- a/kernel/sysproc.c
 +++ b/kernel/sysproc.c
 @@ -6,6 +6,9 @@
@@ -476,16 +471,16 @@ index 3b4d5bd..fd95998 100644
 +  }
 +  // printf("Syscall number: %d\n",syscall_no);
 +  struct proc* p = myproc(); //get the process which is calling the syscall
-+  p->traced_syscall = syscall_no; 
-+  return 0; 
++  p->traced_syscall = syscall_no;
++  return 0;
 +}
 +
-+uint64 
++uint64
 +sys_info(void){
 +  struct procInfo currentInfo;
 +  uint64 addr;
 +  argaddr(0, &addr);
-+  
++
 +  acquire(&proc->lock);
 +  currentInfo.activeProcess = 0;
 +  currentInfo.totalProcess = NPROC;
@@ -567,7 +562,7 @@ index 3b4d5bd..fd95998 100644
 +}
 diff --git a/user/load.c b/user/load.c
 new file mode 100644
-index 0000000..a4bec38
+index 0000000..1939203
 --- /dev/null
 +++ b/user/load.c
 @@ -0,0 +1,75 @@
@@ -614,7 +609,7 @@ index 0000000..a4bec38
 +
 +    printf("Parent wake up.\n");
 +    struct procInfo currentInfo;
-+    
++
 +    info(&currentInfo);
 +    printf("Current system information:\n");
 +    printf("Processes: %d/%d\n", currentInfo.activeProcess, currentInfo.totalProcess);
@@ -648,10 +643,10 @@ index 0000000..a4bec38
 +}
 \ No newline at end of file
 diff --git a/user/sh.c b/user/sh.c
-index 836ebcb..c86d334 100644
+index 836ebcb..1df5dcc 100644
 --- a/user/sh.c
 +++ b/user/sh.c
-@@ -159,12 +159,39 @@ main(void)
+@@ -159,12 +159,50 @@ main(void)
    // Read and run input commands.
    while(getcmd(buf, sizeof(buf)) >= 0){
      if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
@@ -664,16 +659,27 @@ index 836ebcb..c86d334 100644
        buf[strlen(buf)-1] = 0;  // chop \n
        if(chdir(buf+3) < 0)
          fprintf(2, "cannot cd %s\n", buf+3);
-+      
-       continue;
-     }
++
++      continue;
++    }
 +    if(buf[0] == '!' && buf[1] == '!'){
 +      int success;
-+      if(buf[2] == '\n' || buf[2] == ' '){
++      if(buf[2] == '\n'){
 +        success = getLastCommand(buf,1);
 +      }
 +      else{
-+        int n = buf[2] - 48;
++        int n;
++        if(buf[2] == ' '){
++          if(buf[3] == '\n' || buf[3] == ' '){
++            n = 1;
++          }
++          else{
++            n = buf[3] - 48;
++          }
++        }
++        else{
++          n = buf[2] - 48;
++        }
 +        success = getLastCommand(buf,n);
 +      }
 +      if(success < 0){
@@ -682,18 +688,18 @@ index 836ebcb..c86d334 100644
 +      }
 +      printf("%s",buf);
 +    }
-+    
++
 +    if(setLastCommand(buf) < 0){
 +      fprintf(2, "setLastCommand failed\n");
-+      continue;
-+    }
-+    
+       continue;
+     }
++
      if(fork1() == 0)
        runcmd(parsecmd(buf));
      wait(0);
 diff --git a/user/trace.c b/user/trace.c
 new file mode 100644
-index 0000000..8e21fcd
+index 0000000..a515314
 --- /dev/null
 +++ b/user/trace.c
 @@ -0,0 +1,21 @@
@@ -714,7 +720,7 @@ index 0000000..8e21fcd
 +        printf("Invalid syscall number\n");
 +        exit(1);
 +    }
-+    // argv+2 reprsents the array from the 3rd to the last element of the argv array 
++    // argv+2 reprsents the array from the 3rd to the last element of the argv array
 +    exec(argv[2], argv+2);
 +    return 0;
 +}
