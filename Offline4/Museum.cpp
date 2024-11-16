@@ -15,6 +15,7 @@ sem_t step1, step2, step3;
 sem_t gallery1,glass_corridor;
 sem_t photo_booth;
 sem_t count_lock;
+sem_t print_lock;
 
 int standard_visitors,premium_visitors;
 int hallway_time, gallery1_time, gallery2_time, photo_booth_time;
@@ -37,6 +38,7 @@ void init_semaphores(){
     sem_init(&glass_corridor,0,GLASS_CORRIDOR_CAPACITY);
     sem_init(&photo_booth,0,1);
     sem_init(&count_lock,0,1);
+    sem_init(&print_lock,0,1);
 }
 
 class visitor{
@@ -67,50 +69,57 @@ int get_random_number(int min, int max) {
   return min + (rand % (max - min + 1));
 }
 
+void print(string msg){
+    sem_wait(&print_lock);
+    cout<<msg<<endl;
+    sem_post(&print_lock);
+}
+
 void* visitor_thread_routine(void* arg){
     visitor* v = (visitor*)arg;
     //Enter hallway
-    cout<<"Visitor "<<v->id<<" has arrived at A at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" has arrived at A at timestamp "+to_string(get_time()));
     sleep(hallway_time);
     
     //Exit hallway
-    cout<<"Visitor "<<v->id<<" has arrived at B at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" has arrived at B at timestamp "+to_string(get_time()));
     sleep(1);
     
     //Take step 1
     sem_wait(&step1);  // exculsive access to step 1
-    cout<<"Visitor "<<v->id<<" is at step 1 at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at step 1 at timestamp "+to_string(get_time()));
     sleep(1);
     
     //Take step 2
     sem_wait(&step2);   // exclusive access to step 2
-    cout<<"Visitor "<<v->id<<" is at step 2 at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at step 2 at timestamp "+to_string(get_time()));
     sem_post(&step1);   // taken step 2, releasing step 1
     sleep(1);
     
     //Take step 3
     sem_wait(&step3);  // exclusive access to step 3
-    cout<<"Visitor "<<v->id<<" is at step 3 at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at step 3 at timestamp "+to_string(get_time()));
     sem_post(&step2);  // taken step 3, releasing step 2
     sleep(1);
     
     //Enter Gallery 1
     sem_wait(&gallery1);
-    cout<<"Visitor "<<v->id<<" is at C (entered Gallery 1) at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at C (entered Gallery 1) at timestamp "+to_string(get_time()));
+    // cout<<"Visitor "<<v->id<<" is at C (entered Gallery 1) at timestamp "<<get_time()<<endl;
     sem_post(&step3);  // entered gallery 1, releasing step 3
     sleep(gallery1_time);
     
     //Exit Gallery 1
     sem_wait(&glass_corridor);
-    cout<<"Visitor "<<v->id<<" is at D (exiting Gallery 1) at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at D (exiting Gallery 1) at timestamp "+to_string(get_time()));
     sem_post(&gallery1); // entered glass corridor, releasing gallery 1
     sleep(2);
     
     //Enter Gallery 2
-    cout<<"Visitor "<<v->id<<" is at E (entered Gallery 2) at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is at E (entered Gallery 2) at timestamp "+to_string(get_time()));
     sem_post(&glass_corridor); // entered gallery 2, releasing glass corridor
     sleep(gallery2_time);
-    cout<<"Visitor "<<v->id<<" is about to enter the photo booth at timestamp "<<get_time()<<endl;
+    print("Visitor "+to_string(v->id)+" is about to enter the photo booth at timestamp "+to_string(get_time()));
     
     //Enter Photobooth
     
@@ -118,20 +127,20 @@ void* visitor_thread_routine(void* arg){
     if(v->id>=2001 && v->id<=2100){
         // Excluisive access to photo booth
         sem_wait(&photo_booth);
-        cout<<"Visitor "<<v->id<<" is inside the photo booth at timestamp "<<get_time()<<endl;
+        print("Visitor "+to_string(v->id)+" is inside the photo booth at timestamp "+to_string(get_time()));
         sleep(photo_booth_time);
         sem_post(&photo_booth);
     }
     
     // Standard visitor 
     else if(v->id>=1001 && v->id<=1100){
-        sleep(1);
+        sleep(2);
         //Enter photobooth
         sem_wait(&count_lock);
         std_visitor_in_pbooth++;
         //The first standard visitor to enter the photobooth will lock the photobooth
         if(std_visitor_in_pbooth == 1) sem_wait(&photo_booth);
-        cout<<"Visitor "<<v->id<<" is inside the photo booth at timestamp "<<get_time()<<endl;
+        print("Visitor "+to_string(v->id)+" is inside the photo booth at timestamp "+to_string(get_time()));
         sem_post(&count_lock);
         
         sleep(photo_booth_time);
