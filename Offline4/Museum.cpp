@@ -16,11 +16,14 @@ sem_t gallery1,glass_corridor;
 sem_t photo_booth;
 sem_t count_lock;
 sem_t print_lock;
+sem_t priority_lock;
+sem_t premium_count_lock;
 
 int standard_visitors,premium_visitors;
 int hallway_time, gallery1_time, gallery2_time, photo_booth_time;
 time_t start_time;
 int std_visitor_in_pbooth = 0;
+int prm_visitor_in_pbooth = 0;
 
 void init_time(){
     start_time = time(nullptr);
@@ -39,6 +42,8 @@ void init_semaphores(){
     sem_init(&photo_booth,0,1);
     sem_init(&count_lock,0,1);
     sem_init(&print_lock,0,1);
+    sem_init(&priority_lock,0,1);
+    sem_init(&premium_count_lock,0,1);
 }
 
 class visitor{
@@ -125,22 +130,35 @@ void* visitor_thread_routine(void* arg){
     
     //Premium visitor
     if(v->id>=2001 && v->id<=2100){
+        sem_wait(&premium_count_lock);
+        prm_visitor_in_pbooth++;
+        if(prm_visitor_in_pbooth == 1) sem_wait(&priority_lock);
+        sem_post(&premium_count_lock);
+        
         // Excluisive access to photo booth
         sem_wait(&photo_booth);
         print("Visitor "+to_string(v->id)+" is inside the photo booth at timestamp "+to_string(get_time()));
         sleep(photo_booth_time);
+        
+        sem_wait(&premium_count_lock);
+        prm_visitor_in_pbooth--;
+        if(prm_visitor_in_pbooth == 0) sem_post(&priority_lock);
+        sem_post(&premium_count_lock);
+        
         sem_post(&photo_booth);
     }
     
     // Standard visitor 
     else if(v->id>=1001 && v->id<=1100){
-        sleep(2);
+        sleep(1);
+        sem_wait(&priority_lock);
         //Enter photobooth
         sem_wait(&count_lock);
         std_visitor_in_pbooth++;
         //The first standard visitor to enter the photobooth will lock the photobooth
         if(std_visitor_in_pbooth == 1) sem_wait(&photo_booth);
         print("Visitor "+to_string(v->id)+" is inside the photo booth at timestamp "+to_string(get_time()));
+        sem_post(&priority_lock);
         sem_post(&count_lock);
         
         sleep(photo_booth_time);
@@ -205,7 +223,6 @@ int main(int argc, char* argv[]){
         delete visitors[i];
     }
     delete[] visitors;
-
 
     return 0;
 }
